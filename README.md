@@ -105,3 +105,9 @@ find them. If the wrong input field was chosen or if it could not be detected
 at all, you can use the right-click context menu to insert login name and
 password into any input field you like to.
 
+Password management
+-------------------
+
+It is not planned to add support for managing (adding,changing,removing)
+passwords to *passext*. That's what the `pass` programm is for.
+
