@@ -66,8 +66,8 @@ The password database
 ---------------------
 
 *passext* expects a particular format of the database entries so that it can
-match the URLs of webpages to credentials in the password database and extract
-all useful information.
+match the URLs of webpages to credentials in the password database and can
+extract all useful information.
 
 - One file per credential.
 - A file must consist of the password as the first line, and a minimum of two
@@ -77,8 +77,8 @@ all useful information.
   or `name`.
 - The key to use for the url may be one of `url`, `uri`, `host` or `homepage`.
 - Additionally, if there is a key called `pattern` it is used to match against
-  web page URLs. It is a simple Python `fnmatch` pattern similar to the shell
-  globbing syntax.
+  web page URLs instead of the `url` field. It is a simple Python `fnmatch`
+  pattern similar to the shell globbing syntax.
 
 An example:
 
@@ -92,7 +92,7 @@ Usage
 
 *passext* is easy to use once it is set up properly. At the right side of the
 location bar there is a gray *P* icon. If you click it the passphrase dialog
-appears that lets you unlock the password database. On success the *P* icons
+appears that lets you unlock the password database. On success the *P* icon
 turns green.
 
 From now on, everytime you visit a page that has an html password input field
