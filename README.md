@@ -111,3 +111,9 @@ Password management
 It is not planned to add support for managing (adding,changing,removing)
 passwords to *passext*. That's what the `pass` programm is for.
 
+License
+-------
+
+*passext* is licensed under the GPLv2. It contains a copy of jquery.js which is
+MIT licensed.
+
