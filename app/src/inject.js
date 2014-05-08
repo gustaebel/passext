@@ -104,24 +104,28 @@ function inject() {
     // Load the popup.html code and position each popup alongside their
     // respective input elements.
     $("#popup_passext").load(chrome.extension.getURL("src/popup.html"), function() {
-        var element = find_login_input();
-        var pos = element.offset();
-        if (pos !== undefined) {
-            $("#popup_login").css({
-                "left": pos.left + element.width() + 20,
-                "top": pos.top
-            });
-            $("#popup_login").fadeIn();
-        }
-
-        element = $('input[type="password"]').first();
-        pos = element.offset();
-        if (pos !== undefined) {
+        // First find the password field.
+        var elements = $('input[type="password"]');
+        if (elements.length > 0) {
+            var element = elements.first();
+            var pos = element.offset();
             $("#popup_password").css({
                 "left": pos.left + element.width() + 20,
                 "top": pos.top
             });
             $("#popup_password").fadeIn();
+
+            // On success, look for the login field.
+            elements = find_login_input();
+            if (elements.length > 0) {
+                element = elements.first();
+                pos = element.offset();
+                $("#popup_login").css({
+                    "left": pos.left + element.width() + 20,
+                    "top": pos.top
+                });
+                $("#popup_login").fadeIn();
+            }
         }
     });
 }
