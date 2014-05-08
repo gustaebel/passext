@@ -1,0 +1,6 @@
+{
+  "name": "de.gustaebel.passext",
+  "description": "Host application for the ZX2C4 pass extension",
+  "path": "HOST_PATH",
+  "type": "stdio"
+}

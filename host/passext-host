@@ -1,0 +1,226 @@
+#!/usr/bin/env python2
+#
+# passext-host
+#
+# This script allows the chrome extension to access the local password-store
+# and does all the heavy-lifting. It does not use pass(1) directly because it
+# is easier to use gpg ourselves.
+
+import sys
+import os
+import io
+import re
+import time
+import json
+import struct
+import subprocess
+import urlparse
+import signal
+import fnmatch
+
+CACHE_TTL = 3600 # 1 hour
+
+
+class GPG(object):
+    """Babysit a gpg-agent process and do all the necessary decrypting. It
+       starts and uses its own instance of gpg-agent. The gpg-agent information
+       that is normally stored in the GPG_AGENT_INFO environment variable is
+       kept in the chrome storage and transferred with every request from the
+       extension. This is necessary because for each request a single instance
+       of passext-host is used.
+    """
+
+    def __init__(self):
+        self.agent_socket = None
+        self.agent_pid = None
+
+    def open(self, socket, pid, expires):
+        self.agent_socket = socket
+        self.agent_pid = pid
+        self.agent_expires = expires
+
+    def agent_running(self):
+        if self.agent_pid:
+            try:
+                os.kill(self.agent_pid, 0)
+            except OSError:
+                pass
+            else:
+                if os.path.exists(self.agent_socket):
+                    return True
+        return False
+
+    def start_agent(self):
+        # Check if the gpg-agent the chrome extension knows is still running.
+        if self.agent_running():
+            return
+
+        # FIXME error checking
+        proc = subprocess.Popen(["gpg-agent", "--daemon", "--no-use-standard-socket", "--sh",
+                "--default-cache-ttl", str(CACHE_TTL), "--max-cache-ttl", str(CACHE_TTL)],
+                stdout=subprocess.PIPE)
+
+        for line in proc.stdout:
+            m = re.search(r"GPG_AGENT_INFO=([^:]+):(\d+):1", line)
+            if m is not None:
+                self.agent_socket = m.group(1)
+                self.agent_pid = int(m.group(2))
+                self.agent_expires = int(time.time()) + CACHE_TTL
+
+        proc.stdout.close()
+
+    def stop_agent(self):
+        try:
+            os.kill(self.agent_pid, signal.SIGTERM)
+        except OSError:
+            # FIXME error checking
+            pass
+
+    def decrypt(self, path):
+        env = os.environ.copy()
+        env["GPG_AGENT_INFO"] = "%s:%d:1" % (self.agent_socket, self.agent_pid)
+
+        proc = subprocess.Popen(["gpg", "--decrypt", "--batch", "--quiet", "--use-agent", path],
+                env=env, stdout=subprocess.PIPE)
+        for line in proc.stdout:
+            yield line.rstrip()
+        proc.stdout.close()
+        proc.wait() # FIXME error checking
+
+
+class PassDB(object):
+    """Allow access to the pass(1) database in ~/.password-store.
+    """
+
+    def __init__(self, gpg, path=os.path.expanduser("~/.password-store")):
+        self.gpg = gpg
+        self.path = path
+
+    def find(self, url):
+        for info in self:
+            if fnmatch.fnmatch(url, info["pattern"]):
+                return info
+
+    def __iter__(self):
+        for root, dirnames, filenames in os.walk(self.path):
+            for filename in filenames:
+                if os.path.splitext(filename)[1] != ".gpg":
+                    continue
+
+                path = os.path.join(root, filename)
+                lines = list(self.gpg.decrypt(path))
+
+                info = {}
+                try:
+                    info["password"] = lines.pop(0)
+                except IndexError:
+                    # The password could not be produced, either the pass file
+                    # is empty or decryption failed.
+                    continue
+
+                for line in lines:
+                    key, value = line.split(":", 1)
+                    info[key.strip().lower()] = value.strip()
+
+                # Do some transformation to possible user-defined
+                # keys to normalize the information.
+                for key in ("user", "username", "name"):
+                    if key in info:
+                        info["login"] = info.pop(key)
+                        break
+                for key in ("uri", "host", "homepage"):
+                    if key in info:
+                        info["url"] = info.pop(key)
+                        break
+
+                # We need a pattern to match against or at least a URL we can
+                # convert to a pattern.
+                if "pattern" not in info and "url" not in info:
+                    continue
+
+                info["host"] = urlparse.urlsplit(info["url"]).netloc
+                if "pattern" not in info:
+                    # Create a default pattern.
+                    info["pattern"] = "*" + info["host"] + "/*"
+
+                yield info
+
+
+class Server(object):
+    """Communication between passext-host and the chrome extension via stdin
+       and stdout.
+    """
+
+    def __init__(self):
+        self.gpg = None
+        self.db = None
+
+    @staticmethod
+    def send_message(response):
+        # A single message is made up of a length field followed by json data.
+        data = json.dumps(response).encode("utf8")
+        sys.stdout.write(struct.pack("I", len(data)))
+        sys.stdout.write(data)
+        sys.stdout.flush()
+
+    @staticmethod
+    def read_message():
+        buf = sys.stdin.read(struct.calcsize("I"))
+        if len(buf) != struct.calcsize("I"):
+            raise EOFError
+        length = struct.unpack('I', buf)[0]
+        data = sys.stdin.read(length).decode("utf-8")
+        return json.loads(data)
+
+    def handle_request(self):
+        try:
+            request = self.read_message()
+        except EOFError:
+            return self.send_message({})
+
+        response = self.execute_request(request)
+        self.send_message(response)
+
+    def execute_request(self, request):
+        command = request.get("command")
+        if command is None:
+            return {} # FIXME return an error?
+
+        gpg = GPG()
+        db = PassDB(gpg)
+
+        # Use the extension's information about an already running gpg-agent
+        # session.
+        socket = request.get("socket")
+        pid = request.get("pid")
+        expires = request.get("expires")
+        if socket is not None:
+            gpg.open(socket, pid, expires)
+
+        if command == "setup":
+            gpg.start_agent()
+
+            # Trigger decryption (fetch passphrase from pinentry).
+            for info in db:
+                break
+
+            return {"socket": gpg.agent_socket, "pid": gpg.agent_pid, "expires": gpg.agent_expires}
+
+        elif command == "teardown":
+            gpg.stop_agent()
+
+        elif command == "running":
+            return {"running": gpg.agent_running()}
+
+        elif command == "find":
+            info = db.find(request["url"])
+            if info is not None:
+                return info
+
+        return {}
+
+
+if __name__ == "__main__":
+    server = Server()
+    server.handle_request()
+

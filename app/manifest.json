@@ -1,0 +1,48 @@
+{
+    "name": "ZX2C4 pass",
+    "version": "0.1",
+    "manifest_version": 2,
+    "description": "An extension for the ZX2C4 password store",
+    "homepage_url": "http://gustaebel.de/lars/",
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "browser_action": {
+        "default_icon": {
+            "19": "icons/disabled19.png",
+            "38": "icons/disabled38.png"
+        },
+        "default_title": "inactive"
+    },
+    "background": {
+        "scripts": [
+            "src/jquery.js",
+            "src/background.js"
+        ],
+        "persistent": true
+    },
+    "permissions": [
+        "tabs",
+        "nativeMessaging",
+        "contextMenus",
+        "storage"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "http://*/*",
+                "https://*/*"
+            ],
+            "js": [
+                "src/jquery.js",
+                "src/inject.js"
+            ],
+            "all_frames": true
+        }
+    ],
+    "web_accessible_resources": [
+        "src/popup.html"
+    ]
+}

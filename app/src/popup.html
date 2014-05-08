@@ -1,0 +1,62 @@
+<style>
+.popup_passext {
+    display: none;
+    border: 1px solid darkgreen;
+    position: absolute;
+    background: lightgreen;
+    padding: 8px;
+    font-size: small;
+}
+
+.popup_passext a {
+    color: darkgreen;
+}
+
+.popup_passext .popup_arrow {
+    border-color: transparent darkgreen transparent transparent;
+    border-style: solid;
+    border-width: 8px;
+    display: block;
+    left: -17px;
+    position: absolute;
+    top: 4px;
+    height: 0;
+    width: 0;
+}
+</style>
+
+<div id="popup_login" class="popup_passext">
+    <div class="popup_arrow"></div>
+    <a id="popup_login_a" href="#" title="You can choose a different input field using the right-click context menu.">Insert&nbsp;username&nbsp;&quot;<span id="popup_span_login"></span>&quot;</a>
+    &nbsp;
+    <a id="popup_login_x" href="#">&times;</a>
+</div>
+
+<div id="popup_password" class="popup_passext">
+    <div class="popup_arrow"></div>
+    <a id="popup_password_a" href="#" title="You can choose a different input field using the right-click context menu.">Insert&nbsp;password&nbsp;(<span id="popup_span_password"></span>&nbsp;characters)</a>
+    &nbsp;
+    <a id="popup_password_x" href="#">&times;</a>
+</div>
+
+<script>
+$("#popup_login_a").click(
+    function() {
+        var element = find_login_input();
+        element.val(login);
+        $("#popup_login").fadeOut();
+    }
+);
+$("#popup_span_login").replaceWith(login);
+$("#popup_login_x").click(function() { $("#popup_login").fadeOut(); });
+
+$("#popup_password_a").click(
+    function() {
+        $('input[type="password"]').first().val(password);
+        $("#popup_password").fadeOut();
+    }
+);
+$("#popup_span_password").replaceWith(password.length);
+$("#popup_password_x").click(function() { $("#popup_password").fadeOut(); });
+</script>
+
