@@ -39,7 +39,7 @@ function teardownContextMenu() {
  * is locked again. This way the private gpg key passphrase has to be entered
  * only once at the start of the "session".
  */
-function setup() {
+function setup(reload) {
     chrome.runtime.sendNativeMessage("de.gustaebel.passext", {command: "setup", pid: gpg_agent.pid, socket: gpg_agent.socket, expires: gpg_agent.expires},
     function(message) {
         gpg_agent.pid = message.pid;
@@ -66,7 +66,9 @@ function setup() {
         timeout_id = window.setTimeout(teardown, (gpg_agent.expires * 1000) - now - 10000);
         initialized = true;
 
-        reload_tab();
+        if (reload) {
+            reload_tab();
+        }
     });
 }
 
@@ -86,18 +88,21 @@ function reload_tab() {
 
 /* Lock the private gpg key for the password store.
  */
-function teardown() {
+function teardown(reload) {
     chrome.runtime.sendNativeMessage("de.gustaebel.passext", {command: "teardown", pid: gpg_agent.pid, socket: gpg_agent.socket}, function(message) {
         chrome.browserAction.setIcon({path: "icons/disabled19.png"});
         chrome.browserAction.setTitle({title: "inactive"});
 
         teardownContextMenu();
-        reload_tab();
 
         gpg_agent.pid = null;
         gpg_agent.socket = null;
         gpg_agent.expires = null;
         chrome.storage.local.remove(["gpg_agent_pid", "gpg_agent_socket", "gpg_agent_expires"]);
+
+        if (reload) {
+            reload_tab();
+        }
 
         initialized = false;
     });
@@ -107,10 +112,10 @@ function teardown() {
  */
 chrome.browserAction.onClicked.addListener(function(tab) {
     if (!initialized) {
-        setup();
+        setup(true);
     } else {
         clearTimeout(timeout_id);
-        teardown();
+        teardown(true);
     }
 });
 
@@ -174,7 +179,7 @@ chrome.runtime.onInstalled.addListener(function() {
             // Unlock the browser action icon only if there is already
             // a running session.
             if (message.running)
-                setup();
+                setup(false);
         });
     });
 });
