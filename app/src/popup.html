@@ -5,35 +5,48 @@
     position: absolute;
     background: lightgreen;
     padding: 8px;
-    font-size: small;
+    border-radius: 5px;
+    font-size: medium;
+}
+
+.popup_passext:before {
+    content: '';
+    display: block;
+    position: absolute;
+    border-color: transparent darkgreen transparent transparent;
+    border-style: solid;
+    border-width: 8px;
+    left: -17px;
+    top: 50%;
+    margin-top: -8px;
+    z-index: 0;
+}
+.popup_passext:after {
+    content: '';
+    display: block;
+    position: absolute;
+    border-color: transparent lightgreen transparent transparent;
+    border-style: solid;
+    border-width: 8px;
+    left: -16px;
+    top: 50%;
+    margin-top: -8px;
+    z-index: 1;
 }
 
 .popup_passext a {
     color: darkgreen;
 }
 
-.popup_passext .popup_arrow {
-    border-color: transparent darkgreen transparent transparent;
-    border-style: solid;
-    border-width: 8px;
-    display: block;
-    left: -17px;
-    position: absolute;
-    top: 4px;
-    height: 0;
-    width: 0;
-}
 </style>
 
 <div id="popup_login" class="popup_passext">
-    <div class="popup_arrow"></div>
     <a id="popup_login_a" href="#" title="You can choose a different input field using the right-click context menu.">Insert&nbsp;username&nbsp;&quot;<span id="popup_span_login"></span>&quot;</a>
     &nbsp;
     <a id="popup_login_x" href="#">&times;</a>
 </div>
 
 <div id="popup_password" class="popup_passext">
-    <div class="popup_arrow"></div>
     <a id="popup_password_a" href="#" title="You can choose a different input field using the right-click context menu.">Insert&nbsp;password&nbsp;(<span id="popup_span_password"></span>&nbsp;characters)</a>
     &nbsp;
     <a id="popup_password_x" href="#">&times;</a>
