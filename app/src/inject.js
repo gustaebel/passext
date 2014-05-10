@@ -109,6 +109,11 @@ function inject() {
         if (elements.length > 0) {
             var element = elements.first();
             var pos = element.offset();
+
+            if (element.val() == password) {
+                return;
+            }
+
             $("#popup_password").css({
                 "left": pos.left + element.width() + 20,
                 "top": pos.top
