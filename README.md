@@ -50,6 +50,8 @@ Installation requires a good deal of manual work at the moment.
   - `/etc/opt/chrome/native-messaging-hosts`: if you want to install
     `passext-host` system-wide (works probably only with closed-source Chrome,
     but I haven't tested that yet).
+  - `$HOME/Library/Application Support/Chromium/NativeMessagingHosts`: if you're
+    using Chromium on OSX
 - Copy the file `host/de.gustaebel.passext.json` to the directory you just made.
 - Switch on Chrome's developer mode under *chrome://extensions*.
 - Use the `Load unpacked extension` button that has just appeared, and point it
