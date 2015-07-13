@@ -5,7 +5,7 @@ var initialized = false;
 var gpg_agent = {pid: null, socket: null, expires: null};
 var timeout_id = null;
 
-/* Set up the context menu which allows inserting the username and password
+/* Set up the context menu which allows inserting the login name and password
  * into input fields other than the ones that were autodetected.
  */
 function setupContextMenu(host, login, passlen) {
@@ -13,10 +13,10 @@ function setupContextMenu(host, login, passlen) {
         {contexts: ["editable"], title: host}
     );
     var childId1 = chrome.contextMenus.create(
-        {contexts: ["editable"], title: 'Insert username "' + login + '"', parentId: parentId, onclick:
+        {contexts: ["editable"], title: 'Insert login name "' + login + '"', parentId: parentId, onclick:
             function(info, tab) {
                 var port = chrome.tabs.connect(tab.id);
-                port.postMessage({command: "insert_username"});
+                port.postMessage({command: "insert_login"});
             }
         }
     );

@@ -36,9 +36,9 @@ function listener(message) {
             port.postMessage({command: "context", has_password: true, host: host, login: login, password: password.length});
         }
 
-    } else if (message.command == "insert_username") {
-        // Callback from the context menu, insert the username in the currently
-        // active input element.
+    } else if (message.command == "insert_login") {
+        // Callback from the context menu, insert the login name in the
+        // currently active input element.
         document.activeElement.value = login;
 
     } else if (message.command == "insert_password") {
@@ -53,7 +53,7 @@ function listener(message) {
             host: host, login: login, password: password.length});
 
     } else if (message.command == "error") {
-        console.error("error: " + message.message);
+        console.error(message.message);
 
     } else {
         console.warn("unhandled background script message " + JSON.stringify(message));
@@ -72,7 +72,7 @@ function initialize() {
 }
 
 /* Go through all possible permutations of possible attributes and values in
- * order to find the login/username input field in the DOM. We don't use a
+ * order to find the login name input field in the DOM. We don't use a
  * chained jquery selection here because we need case insensitve matching,
  * which jquery apparently does not provide with the *= selector.
  */
