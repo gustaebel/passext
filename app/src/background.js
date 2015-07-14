@@ -1,8 +1,7 @@
 /* background.js
  */
 
-var initialized = false;
-var gpg_agent = {pid: null, socket: null, expires: null};
+var unlocked = false;
 var timeout_id = null;
 
 /* Set up the context menu which allows inserting the login name and password
@@ -40,31 +39,33 @@ function teardownContextMenu() {
  * only once at the start of the "session".
  */
 function setup(reload) {
-    chrome.runtime.sendNativeMessage("de.gustaebel.passext", {command: "setup", pid: gpg_agent.pid, socket: gpg_agent.socket, expires: gpg_agent.expires},
-    function(message) {
-        gpg_agent.pid = message.pid;
-        gpg_agent.socket = message.socket;
-        gpg_agent.expires = message.expires;
-        chrome.storage.local.set({gpg_agent_pid: message.pid, gpg_agent_socket: message.socket, gpg_agent_expires: message.expires});
-
-        // XXX is there really no builtin way to zero-pad numbers?
-        var date = new Date();
-        date.setTime(gpg_agent.expires * 1000);
-        var hours = date.getHours().toString();
-        if (hours.length == 1)
-            hours = "0" + hours;
-        var minutes = date.getMinutes().toString();
-        if (minutes.length == 1)
-            minutes = "0" + minutes;
-
+    chrome.runtime.sendNativeMessage("de.gustaebel.passext", {command: "setup"}, function(message) {
         chrome.browserAction.setIcon({path: "icons/icon19.png"});
-        chrome.browserAction.setTitle({title: "active until " + hours + ":" + minutes});
+        chrome.browserAction.setTitle({title: "active"});
 
-        // Set an expiration timer so that the browser action icon is disabled just
-        // before the gpg-agent (started by passext-host) forgets the passphrase.
-        var now = new Date().getTime();
-        timeout_id = window.setTimeout(teardown, (gpg_agent.expires * 1000) - now - 10000);
-        initialized = true;
+        unlocked = true;
+
+        // Check once every 15 seconds whether the password store is still unlocked.
+        timeout_id = window.setInterval(check, 15000);
+
+        if (reload) {
+            reload_tab();
+        }
+    });
+}
+
+/* Lock the private gpg key for the password store.
+ */
+function teardown(reload) {
+    chrome.runtime.sendNativeMessage("de.gustaebel.passext", {command: "teardown"}, function(message) {
+        chrome.browserAction.setIcon({path: "icons/disabled19.png"});
+        chrome.browserAction.setTitle({title: "inactive"});
+
+        teardownContextMenu();
+
+        unlocked = false;
+
+        clearInterval(timeout_id);
 
         if (reload) {
             reload_tab();
@@ -86,35 +87,22 @@ function reload_tab() {
     });
 }
 
-/* Lock the private gpg key for the password store.
+/* Check whether the password store is still unlocked.
  */
-function teardown(reload) {
-    chrome.runtime.sendNativeMessage("de.gustaebel.passext", {command: "teardown", pid: gpg_agent.pid, socket: gpg_agent.socket}, function(message) {
-        chrome.browserAction.setIcon({path: "icons/disabled19.png"});
-        chrome.browserAction.setTitle({title: "inactive"});
-
-        teardownContextMenu();
-
-        gpg_agent.pid = null;
-        gpg_agent.socket = null;
-        gpg_agent.expires = null;
-        chrome.storage.local.remove(["gpg_agent_pid", "gpg_agent_socket", "gpg_agent_expires"]);
-
-        if (reload) {
-            reload_tab();
+function check() {
+    chrome.runtime.sendNativeMessage("de.gustaebel.passext", {command: "unlocked"}, function(message) {
+        if (!message.unlocked) {
+            teardown(false);
         }
-
-        initialized = false;
     });
 }
 
 /* Lock/unlock the private gpg key once the browser action icon is clicked.
  */
 chrome.browserAction.onClicked.addListener(function(tab) {
-    if (!initialized) {
+    if (!unlocked) {
         setup(true);
     } else {
-        clearTimeout(timeout_id);
         teardown(true);
     }
 });
@@ -124,15 +112,15 @@ chrome.browserAction.onClicked.addListener(function(tab) {
  */
 chrome.runtime.onConnect.addListener(function(port) {
     port.onMessage.addListener(function(message) {
-        if (message.command == "initialized") {
-            port.postMessage({command: "initialized", initialized: initialized});
+        if (message.command == "unlock") {
+            port.postMessage({command: "unlocked", unlocked: unlocked});
 
-        } else if (!initialized) {
-            port.postMessage({command: "error", message: "not initialized"});
+        } else if (!unlocked) {
+            port.postMessage({command: "error", message: "not unlocked"});
 
-        } else if (message.command == "find") {
+        } else if (message.command == "find" && unlocked) {
             chrome.runtime.sendNativeMessage("de.gustaebel.passext",
-                { command: "find", url: message.url, pid: gpg_agent.pid, socket: gpg_agent.socket},
+                { command: "find", url: message.url},
                 function(message) {
                     message.command = "find";
                     port.postMessage(message);
@@ -157,30 +145,5 @@ chrome.tabs.onActivated.addListener(function(activeInfo) {
 
     var port = chrome.tabs.connect(activeInfo.tabId);
     port.postMessage({command: "context"});
-});
-
-/* Initialize the background script. Synchronize the running "session" with
- * passext-host, i.e.  if a gpg-agent is already running the browser action
- * icon will already be unlocked.
- */
-chrome.runtime.onInstalled.addListener(function() {
-    initialized = false;
-
-    // Fetch the configuration of the currently running gpg-agent from the
-    // browser storage. passext-host is questioned about whether this gpg-agent
-    // is still active. If not it implicitly starts a new instance.
-    chrome.storage.local.get(["gpg_agent_pid", "gpg_agent_socket", "gpg_agent_expires"], function(items) {
-        if ("gpg_agent_pid" in items) {
-            gpg_agent.pid = items["gpg_agent_pid"];
-            gpg_agent.socket = items["gpg_agent_socket"];
-            gpg_agent.expires = items["gpg_agent_expires"];
-        }
-        chrome.runtime.sendNativeMessage("de.gustaebel.passext", {command: "running", pid: gpg_agent.pid, socket: gpg_agent.socket}, function(message) {
-            // Unlock the browser action icon only if there is already
-            // a running session.
-            if (message.running)
-                setup(false);
-        });
-    });
 });
 

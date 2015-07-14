@@ -31,9 +31,6 @@ designated executable that has to be registered beforehand. In *passext*, a
 Python 2 script called `passext-host` is used for that. It is located in the
 `host/` subdirectory along with the required manifest json file.
 
-`passext-host` uses its own instance of `gpg-agent` so that the private gpg key
-passphrase has to be entered only once every hour.
-
 For more information look at the code, it is rather well-documented.
 
 Installation

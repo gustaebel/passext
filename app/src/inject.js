@@ -9,9 +9,9 @@ var port = null;
 /* Listen for incoming connections from background.js.
  */
 function listener(message) {
-    if (message.command == "initialized") {
-        if (message.initialized) {
-            // If there is a running session, install a long-lived listener to
+    if (message.command == "unlocked") {
+        if (message.unlocked) {
+            // If there is a active session, install a long-lived listener to
             // the background.js connection that handles all the subsequent
             // communication.
             chrome.runtime.onConnect.addListener(function(port) {
@@ -61,14 +61,14 @@ function listener(message) {
 }
 
 /* Initialize the content script and ask the background script if there is a
- * session currently running, otherwise we just return without doing anything.
+ * session currently active, otherwise we just return without doing anything.
  */
 function initialize() {
     // Connect to background.js and install a short-lived listener, so that we
-    // get the answer to the "initialized" request.
+    // get the answer to the "unlock" request.
     port = chrome.runtime.connect();
     port.onMessage.addListener(listener);
-    port.postMessage({command: "initialized"});
+    port.postMessage({command: "unlock"});
 }
 
 /* Go through all possible permutations of possible attributes and values in
